@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const Customer = require('../models/customerSchema.js');
-const createNewToken  = require('../utils/token.js');
+const { createNewToken } = require('../utils/token.js');
 
 const customerRegister = async (req, res) => {
     try {
@@ -27,46 +27,53 @@ const customerRegister = async (req, res) => {
                 ...result._doc,
                 token: token
             };
-            res.setHeader('Authorization', `Bearer ${token}`);               //newly add  res.setHeader('Authorization', `Bearer ${token}`);
+
             res.send(result);
         }
     } catch (err) {
         res.status(500).json(err);
     }
 };
-
+//wrong login logic changed
 const customerLogIn = async (req, res) => {
-    if (req.body.email && req.body.password) {
-        let customer = await Customer.findOne({ email: req.body.email });
-        if (customer) {                                                                        //not ! is used initaly not was taken
-            const validated = await bcrypt.compare(req.body.password, customer.password);
-            if (validated) {                                                                          //not ! is used initaly not was taken
-                customer.password = undefined;
+    try {
+        const { email, password } = req.body;
 
-                const token = createNewToken(customer._id)
-
-                customer = {
-                    ...customer._doc,
-                    token: token
-                };
-                res.setHeader('Authorization', `Bearer ${token}`);              //newly add  res.setHeader('Authorization', `Bearer ${token}`);
-                res.send(customer);
-            } else {
-                res.send({ message: "Invalid password" });
-            }
-        } else {
-            res.send({ message: "User not found" });
+        if (!email || !password) {
+            return res.status(400).send({ message: "Email and password are required" });
         }
-    } else {
-        res.send({ message: "Email and password are required" });
+
+        const customer = await Customer.findOne({ email: email });
+        if (!customer) {
+            return res.status(404).send({ message: "User not found" });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, customer.password);
+        if (!isPasswordValid) {
+            return res.status(400).send({ message: "Invalid password" });
+        }
+
+        customer.password = undefined;
+
+        const token = createNewToken(customer._id);
+
+        const response = {
+            ...customer._doc,
+            token: token
+        };
+
+        res.send(response);
+    } catch (err) {
+        res.status(500).json({ message: "Internal Server Error", error: err });
     }
 };
-
 const getCartDetail = async (req, res) => {
     try {
-        let customer = await Customer.findBy(req.params.id)
+        // findbyid not used
+        let customer = await Customer.findById(req.params.id)
         if (customer) {
-            res.send(customer.cartDetails);     /// res.get changed into send
+            // send method is changed
+            res.send(customer.cartDetails);
         }
         else {
             res.send({ message: "No customer found" });
@@ -79,8 +86,9 @@ const getCartDetail = async (req, res) => {
 const cartUpdate = async (req, res) => {
     try {
 
+        // setting new option to true
         let customer = await Customer.findByIdAndUpdate(req.params.id, req.body,
-            { new: false })
+            { new: true })
 
         return res.send(customer.cartDetails);
 
