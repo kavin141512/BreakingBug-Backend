@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const Customer = require('../models/customerSchema.js');
-const { createNewToken } = require('../utils/token.js');
+const createNewToken  = require('../utils/token.js');
 
 const customerRegister = async (req, res) => {
     try {
@@ -27,7 +27,7 @@ const customerRegister = async (req, res) => {
                 ...result._doc,
                 token: token
             };
-
+            res.setHeader('Authorization', `Bearer ${token}`);               //newly add  res.setHeader('Authorization', `Bearer ${token}`);
             res.send(result);
         }
     } catch (err) {
@@ -38,9 +38,9 @@ const customerRegister = async (req, res) => {
 const customerLogIn = async (req, res) => {
     if (req.body.email && req.body.password) {
         let customer = await Customer.findOne({ email: req.body.email });
-        if (!customer) {
+        if (customer) {                                                                        //not ! is used initaly not was taken
             const validated = await bcrypt.compare(req.body.password, customer.password);
-            if (!validated) {
+            if (validated) {                                                                          //not ! is used initaly not was taken
                 customer.password = undefined;
 
                 const token = createNewToken(customer._id)
@@ -49,7 +49,7 @@ const customerLogIn = async (req, res) => {
                     ...customer._doc,
                     token: token
                 };
-
+                res.setHeader('Authorization', `Bearer ${token}`);              //newly add  res.setHeader('Authorization', `Bearer ${token}`);
                 res.send(customer);
             } else {
                 res.send({ message: "Invalid password" });
@@ -66,7 +66,7 @@ const getCartDetail = async (req, res) => {
     try {
         let customer = await Customer.findBy(req.params.id)
         if (customer) {
-            res.get(customer.cartDetails);
+            res.send(customer.cartDetails);     /// res.get changed into send
         }
         else {
             res.send({ message: "No customer found" });

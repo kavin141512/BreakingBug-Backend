@@ -26,7 +26,7 @@ const orderSchema = new mongoose.Schema(
             },
             pinCode: {
                 type: Number,
-                
+                required: true,      /// required add ed initial not given
             },
             phoneNo: {
                 type: Number,
@@ -103,18 +103,19 @@ const orderSchema = new mongoose.Schema(
         totalPrice: {
             type: Number,
             required: true,
-            default: 20,
+            default: 0,   //20 changed into 0
         },
         orderStatus: {
             type: String,
             required: true,
+            default:"Processing"    // default added initally not given there
             
         },
         deliveredAt: Date,
         createdAt: {
             type: Date,
-            default: Date.now,
+            default: Date.now(),  //date.now changed as date.now()
         },
     });
 
-module.exports = mongoose.model("customer", orderSchema);
+module.exports = mongoose.model("order", orderSchema);  //here customer collection name changed as order

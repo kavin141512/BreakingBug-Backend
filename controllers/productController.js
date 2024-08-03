@@ -177,22 +177,17 @@ const deleteProduct = async (req, res) => {
     }
 };
 
+// function recoded to be able to gather ids and then delete
 const deleteProducts = async (req, res) => {
     try {
+        const productsToDelete = await Product.find({ seller: req.params.id });
+        const productIds = productsToDelete.map(product => product._id);
+
         const deletionResult = await Product.deleteMany({ seller: req.params.id });
 
-        const deletedCount = deletionResult.deletedCount || 0;
-
-        if (deletedCount === 0) {
-            res.send({ message: "No products found to delete" });
-            return;
-        }
-
-        const deletedProducts = await Product.find({ seller: req.params.id });
-
         await Customer.updateMany(
-            { "cartDetails._id": { $in: deletedProducts.map(product => product._id) } },
-            { $pull: { cartDetails: { _id: { $in: deletedProducts.map(product => product._id) } } } }
+            { "cartDetails._id": { $in: productIds } },
+            { $pull: { cartDetails: { _id: { $in: productIds } } } }
         );
 
         res.send(deletionResult);
@@ -208,8 +203,9 @@ const deleteProductReview = async (req, res) => {
         const productId = req.params.id;
 
         const product = await Product.findById(productId);
+        // comparing objectids using .equals method rather than normal ==
+        const updatedReviews = product.reviews.filter(review => !review._id.equals(reviewId));
 
-        const updatedReviews = product.reviews.filter(review => review._id != reviewId);
 
         product.reviews = updatedReviews;
 
@@ -237,23 +233,17 @@ const deleteAllProductReviews = async (req, res) => {
 const getInterestedCustomers = async (req, res) => {
     try {
         const productId = req.params.id;
-
-        const interestedCustomers = await Customer.find({
-            'cartDetails._id': productId
-        });
-
+        
+        // solved the key inconsistency in map and filter
         const customerDetails = interestedCustomers.map(customer => {
             const cartItem = customer.cartDetails.find(item => item._id.toString() === productId);
-            if (cartItem) {
-                return {
-                    customerName: customer.name,
-                    customerID: customer._id,
-                    quantity: cartItem.quantity,
-                };
-            }
-            return null; // If cartItem is not found in this customer's cartDetails
-        }).filter(item => item !== null); // Remove null values from the result
-
+            return cartItem ? {
+                customerName: customer.name,
+                customerID: customer._id,
+                quantity: cartItem.quantity,
+            } : null;
+        }).filter(item => item);
+        
         if (customerDetails.length > 0) {
             res.send(customerDetails);
         } else {
